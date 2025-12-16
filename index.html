@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вращающийся Логотип по Свайпу (Без Выделения)</title>
+    <style>
+        /* Базовые стили */
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0; 
+            perspective: 1000px; 
+            overflow: hidden; 
+            /* 1. Блокирует стандартные жесты браузера (например, "Pull to Refresh") 
+               и предотвращает синее выделение при касании */
+            touch-action: none; 
+            
+            /* 2. Блокирует выделение текста/элемента мышью на всех элементах */
+            user-select: none; 
+            -webkit-user-select: none; /* Для старых версий Safari/Chrome */
+            -moz-user-select: none; /* Для Firefox */
+            -ms-user-select: none; /* Для Internet Explorer/Edge */
+        }
+
+        /* Контейнер для 3D-вращения */
+        .logo-container {
+            width: 300px; 
+            height: 300px;
+            transform-style: preserve-3d; 
+            transition: none; 
+            cursor: grab; 
+        }
+
+        .logo-container.grabbing {
+             cursor: grabbing; 
+        }
+
+        /* Стили для самого изображения логотипа */
+        .logo-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; 
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.2));
+            pointer-events: none; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo-container" id="logoContainer">
+        <img 
+            src="https://web.minskenergo.by/visitcard/img/logo.png" 
+            alt="Логотип" 
+            class="logo-image"
+        >
+    </div>
+
+    <script>
+        const container = document.getElementById('logoContainer');
+        
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        
+        let currentRotationX = 0;
+        let currentRotationY = 0;
+        
+        let velocityX = 0;
+        let velocityY = 0;
+        
+        const dragSpeed = 0.5; 
+        const friction = 0.95; 
+        
+        let lastMoveTime = 0;
+
+        function updateRotation() {
+            container.style.transform = `rotateX(${currentRotationX}deg) rotateY(${currentRotationY}deg)`;
+        }
+
+        function startDrag(clientX, clientY) {
+            isDragging = true;
+            startX = clientX;
+            startY = clientY;
+            container.classList.add('grabbing');
+        }
+
+        function handleMove(clientX, clientY) {
+            if (!isDragging) return;
+
+            const now = performance.now();
+            const deltaTime = now - lastMoveTime;
+            
+            const deltaX = clientX - startX;
+            const deltaY = clientY - startY;
+
+            currentRotationY += deltaX * dragSpeed;
+            currentRotationX -= deltaY * dragSpeed; 
+
+            startX = clientX;
+            startY = clientY;
+
+            if (deltaTime > 0) {
+                velocityX = (deltaX / deltaTime) * 5; 
+                velocityY = (deltaY / deltaTime) * 5;
+            }
+
+            lastMoveTime = now;
+
+            updateRotation();
+        }
+
+        function stopDrag() {
+            isDragging = false;
+            container.classList.remove('grabbing');
+            requestAnimationFrame(applyInertia); 
+        }
+
+        function applyInertia() {
+            if (isDragging) return; 
+
+            currentRotationY += velocityX;
+            currentRotationX -= velocityY; 
+            
+            velocityX *= friction; 
+            velocityY *= friction;
+
+            updateRotation();
+
+            if (Math.abs(velocityX) > 0.05 || Math.abs(velocityY) > 0.05) {
+                requestAnimationFrame(applyInertia);
+            }
+        }
+
+        // --- Обработчики Мыши ---
+        container.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', stopDrag);
+        
+        // --- Обработчики Касания (Touch) ---
+        container.addEventListener('touchstart', (e) => {
+            e.preventDefault(); 
+            const touch = e.touches[0];
+            startDrag(touch.clientX, touch.clientY);
+        }, { passive: false }); // {passive: false} необходим для e.preventDefault() на мобильных устройствах
+
+        window.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleMove(touch.clientX, touch.clientY);
+        }, { passive: false });
+        
+        window.addEventListener('touchend', stopDrag);
+        window.addEventListener('touchcancel', stopDrag);
+
+        updateRotation();
+    </script>
+</body>
+</html>
